@@ -1,0 +1,120 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define MAX_SIZE 100
+
+// минимум из трёх чисел
+int min3(int a, int b, int c) {
+    int min = a;
+    if (b < min) min = b;
+    if (c < min) min = c;
+    return min;
+}
+
+// вывод матрицы
+void printMatrix(int matrix[MAX_SIZE][MAX_SIZE], int m, int n, const char *title) {
+    printf("%s:\n", title);
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            printf("%d ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+int main() {
+    int matrix[MAX_SIZE][MAX_SIZE];
+    int dp[MAX_SIZE][MAX_SIZE];  // dp[i][j] = размер максимальной квадратной подматрицы с правым нижним углом в (i,j)
+    int countBySize[MAX_SIZE];   // количество квадратов каждого размера
+    int m, n;
+    
+    srand(time(NULL));
+    
+    // ввод размеров матрицы
+    printf("Введите количество строк M: ");
+    scanf("%d", &m);
+    printf("Введите количество столбцов N: ");
+    scanf("%d", &n);
+    
+    if (m <= 0 || m > MAX_SIZE || n <= 0 || n > MAX_SIZE) {
+        printf("Ошибка: размеры должны быть от 1 до %d\n", MAX_SIZE);
+        return 1;
+    }
+    
+    // выбор способа заполнения
+    int choice;
+    printf("Выберите способ заполнения матрицы:\n");
+    printf("1 - Случайные числа (0 и 1)\n");
+    printf("2 - Ввод вручную\n");
+    printf("Ваш выбор: ");
+    scanf("%d", &choice);
+    
+    if (choice == 2) {
+        printf("Введите элементы матрицы (только 0 и 1), %d x %d:\n", m, n);
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                printf("matrix[%d][%d] = ", i, j);
+                scanf("%d", &matrix[i][j]);
+                if (matrix[i][j] != 0 && matrix[i][j] != 1) {
+                    printf("Внимание: значение преобразовано в %d\n", matrix[i][j] != 0 ? 1 : 0);
+                    matrix[i][j] = matrix[i][j] != 0 ? 1 : 0;
+                }
+            }
+        }
+    } else {
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                matrix[i][j] = rand() % 2;
+            }
+        }
+    }
+    
+    printMatrix(matrix, m, n, "Матрица");
+    
+    // инициализация счётчиков
+    int maxSize = (m < n) ? m : n;
+    for (int i = 0; i <= maxSize; i++) {
+        countBySize[i] = 0;
+    }
+    
+    // динамическое программирование для подсчёта квадратных подматриц из единиц
+    int totalSquares = 0;
+    
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (matrix[i][j] == 1) {
+                if (i == 0 || j == 0) {
+                    dp[i][j] = 1;
+                } else {
+                    dp[i][j] = min3(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]) + 1;
+                }
+                // каждая позиция с dp[i][j] = k вносит вклад в квадраты размеров 1, 2, ..., k
+                for (int size = 1; size <= dp[i][j]; size++) {
+                    countBySize[size]++;
+                    totalSquares++;
+                }
+            } else {
+                dp[i][j] = 0;
+            }
+        }
+    }
+    
+    // вывод результатов
+    printf("=== Результаты ===\n");
+    printf("Общее количество квадратных подматриц из единиц: %d\n\n", totalSquares);
+    
+    printf("Распределение по размерам:\n");
+    for (int size = 1; size <= maxSize; size++) {
+        if (countBySize[size] > 0) {
+            printf("  Размер %d×%d: %d квадрат(ов)\n", size, size, countBySize[size]);
+        }
+    }
+    
+    if (totalSquares == 0) {
+        printf("  Квадратных подматриц из единиц не найдено.\n");
+    }
+    
+    return 0;
+}
