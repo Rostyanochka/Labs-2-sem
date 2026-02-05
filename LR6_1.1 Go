@@ -1,0 +1,112 @@
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+const MaxSize = 100
+
+// randomInRange возвращает случайное число в диапазоне [min, max]
+func randomInRange(min, max int) int {
+	// rand.Intn(n) возвращает число от 0 до n-1, поэтому добавляем 1
+	return min + rand.Intn(max-min+1)
+}
+
+// isInForbiddenRange проверяет, находится ли число в диапазоне [-10, 10]
+func isInForbiddenRange(num int) bool {
+	return num >= -10 && num <= 10
+}
+
+func generateOutsideForbiddenRange() int {
+	var num int
+	// Цикл do-while в Go реализуется через for
+	for {
+		num = randomInRange(-50, 50)
+		if !isInForbiddenRange(num) {
+			break
+		}
+	}
+	return num
+}
+
+// printMatrix выводит матрицу с заголовком
+func printMatrix(matrix [][]int, n int, title string) {
+	fmt.Printf("%s:\n", title)
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			// %4d обеспечивает выравнивание по ширине 4 символа
+			fmt.Printf("%4d ", matrix[i][j])
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+}
+
+func main() {
+	// Инициализация генератора случайных чисел (обязательно для версий Go < 1.20)
+	rand.Seed(time.Now().UnixNano())
+
+	var n int
+	fmt.Print("Введите размер матрицы N (чётное число): ")
+	fmt.Scan(&n) // Аналог scanf
+
+	// Проверки ввода
+	if n <= 0 || n > MaxSize {
+		fmt.Printf("Ошибка: N должно быть положительным числом не больше %d\n", MaxSize)
+		return
+	}
+	if n%2 != 0 {
+		fmt.Println("Ошибка: N должно быть чётным числом")
+		return
+	}
+
+	// Создание динамической матрицы (слайса слайсов).
+	// В Go это удобнее, чем статический массив [100][100].
+	matrix := make([][]int, n)
+	for i := range matrix {
+		matrix[i] = make([]int, n)
+	}
+
+	var choice int
+	fmt.Println("Выберите способ заполнения матрицы:")
+	fmt.Println("1 - Случайные числа")
+	fmt.Println("2 - Ввод вручную")
+	fmt.Print("Ваш выбор: ")
+	fmt.Scan(&choice)
+
+	if choice == 2 {
+		// Ручной ввод
+		fmt.Printf("Введите элементы матрицы (%d x %d):\n", n, n)
+		for i := 0; i < n; i++ {
+			for j := 0; j < n; j++ {
+				fmt.Printf("matrix[%d][%d] = ", i, j)
+				fmt.Scan(&matrix[i][j])
+			}
+		}
+	} else {
+		// Заполнение случайными числами
+		for i := 0; i < n; i++ {
+			for j := 0; j < n; j++ {
+				matrix[i][j] = randomInRange(-50, 50)
+			}
+		}
+	}
+
+	printMatrix(matrix, n, "Исходная матрица")
+
+	// Модификация матрицы
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			// Проверяем чётные столбцы (0, 2, 4...)
+			if j%2 == 0 {
+				if isInForbiddenRange(matrix[i][j]) {
+					matrix[i][j] = generateOutsideForbiddenRange()
+				}
+			}
+		}
+	}
+
+	printMatrix(matrix, n, "Модифицированная матрица")
+}
