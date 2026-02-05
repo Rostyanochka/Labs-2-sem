@@ -1,0 +1,147 @@
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+const MaxSize = 100
+
+// min3 — минимум из трёх чисел
+func min3(a, b, c int) int {
+	min := a
+	if b < min {
+		min = b
+	}
+	if c < min {
+		min = c
+	}
+	return min
+}
+
+// printMatrix — вывод матрицы
+func printMatrix(matrix [][]int, m, n int, title string) {
+	fmt.Printf("%s:\n", title)
+	for i := 0; i < m; i++ {
+		for j := 0; j < n; j++ {
+			fmt.Printf("%d ", matrix[i][j])
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+}
+
+func main() {
+	var m, n int
+
+	// инициализация генератора случайных чисел
+	rand.Seed(time.Now().UnixNano())
+
+	// ввод размеров матрицы
+	fmt.Print("Введите количество строк M: ")
+	fmt.Scan(&m)
+	fmt.Print("Введите количество столбцов N: ")
+	fmt.Scan(&n)
+
+	if m <= 0 || m > MaxSize || n <= 0 || n > MaxSize {
+		fmt.Printf("Ошибка: размеры должны быть от 1 до %d\n", MaxSize)
+		return
+	}
+
+	// матрица и dp как слайсы слайсов
+	matrix := make([][]int, m)
+	dp := make([][]int, m)
+	for i := 0; i < m; i++ {
+		matrix[i] = make([]int, n)
+		dp[i] = make([]int, n)
+	}
+
+	// счётчик по размерам
+	countBySize := make([]int, MaxSize+1)
+
+	// выбор способа заполнения
+	var choice int
+	fmt.Println("Выберите способ заполнения матрицы:")
+	fmt.Println("1 - Случайные числа (0 и 1)")
+	fmt.Println("2 - Ввод вручную")
+	fmt.Print("Ваш выбор: ")
+	fmt.Scan(&choice)
+
+	if choice == 2 {
+		fmt.Printf("Введите элементы матрицы (только 0 и 1), %d x %d:\n", m, n)
+		for i := 0; i < m; i++ {
+			for j := 0; j < n; j++ {
+				fmt.Printf("matrix[%d][%d] = ", i, j)
+				fmt.Scan(&matrix[i][j])
+				if matrix[i][j] != 0 && matrix[i][j] != 1 {
+					fmt.Printf("Внимание: значение преобразовано в %d\n", func(v int) int {
+						if v != 0 {
+							return 1
+						}
+						return 0
+					}(matrix[i][j]))
+					if matrix[i][j] != 0 {
+						matrix[i][j] = 1
+					} else {
+						matrix[i][j] = 0
+					}
+				}
+			}
+		}
+	} else {
+		for i := 0; i < m; i++ {
+			for j := 0; j < n; j++ {
+				matrix[i][j] = rand.Intn(2) // 0 или 1
+			}
+		}
+	}
+
+	printMatrix(matrix, m, n, "Матрица")
+
+	// инициализация счётчиков
+	maxSize := m
+	if n < m {
+		maxSize = n
+	}
+	for i := 0; i <= maxSize; i++ {
+		countBySize[i] = 0
+	}
+
+	// динамическое программирование для подсчёта квадратных подматриц из единиц
+	totalSquares := 0
+
+	for i := 0; i < m; i++ {
+		for j := 0; j < n; j++ {
+			if matrix[i][j] == 1 {
+				if i == 0 || j == 0 {
+					dp[i][j] = 1
+				} else {
+					dp[i][j] = min3(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]) + 1
+				}
+				// каждая позиция с dp[i][j] = k вносит вклад в квадраты размеров 1..k
+				for size := 1; size <= dp[i][j]; size++ {
+					countBySize[size]++
+					totalSquares++
+				}
+			} else {
+				dp[i][j] = 0
+			}
+		}
+	}
+
+	// вывод результатов
+	fmt.Println("=== Результаты ===")
+	fmt.Printf("Общее количество квадратных подматриц из единиц: %d\n\n", totalSquares)
+
+	fmt.Println("Распределение по размерам:")
+	for size := 1; size <= maxSize; size++ {
+		if countBySize[size] > 0 {
+			fmt.Printf("  Размер %d×%d: %d квадрат(ов)\n", size, size, countBySize[size])
+		}
+	}
+
+	if totalSquares == 0 {
+		fmt.Println("  Квадратных подматриц из единиц не найдено.")
+	}
+}
