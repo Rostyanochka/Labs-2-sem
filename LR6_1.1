@@ -1,0 +1,104 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define MAX_SIZE 100  
+
+// генерация случайного числа в диапазоне [min, max]
+int randomInRange(int min, int max) {
+    return min + rand() % (max - min + 1);
+}
+
+// находится ли число в диапазоне [-10, 10]
+int isInForbiddenRange(int num) {
+    return (num >= -10 && num <= 10);
+}
+
+int generateOutsideForbiddenRange() {
+    int num;
+    do {
+        num = randomInRange(-50, 50);
+    } while (isInForbiddenRange(num));
+    return num;
+}
+
+// Функция для вывода матрицы
+void printMatrix(int matrix[MAX_SIZE][MAX_SIZE], int n, const char *title) {
+    printf("%s:\n", title);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            printf("%4d ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+int main() {
+    int matrix[MAX_SIZE][MAX_SIZE];
+    int n;
+    
+    // Инициализация генератора случайных чисел
+    srand(time(NULL));
+    
+    // Ввод размера матрицы
+    printf("Введите размер матрицы N (чётное число): ");
+    scanf("%d", &n);
+    
+    // Проверка на чётность и допустимый размер
+    if (n <= 0 || n > MAX_SIZE) {
+        printf("Ошибка: N должно быть положительным числом не больше %d\n", MAX_SIZE);
+        return 1;
+    }
+    if (n % 2 != 0) {
+        printf("Ошибка: N должно быть чётным числом\n");
+        return 1;
+    }
+    
+    // Выбор способа заполнения матрицы
+    int choice;
+    printf("Выберите способ заполнения матрицы:\n");
+    printf("1 - Случайные числа\n");
+    printf("2 - Ввод вручную\n");
+    printf("Ваш выбор: ");
+    scanf("%d", &choice);
+    
+    if (choice == 2) {
+        // Ручной ввод матрицы
+        printf("Введите элементы матрицы (%d x %d):\n", n, n);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                printf("matrix[%d][%d] = ", i, j);
+                scanf("%d", &matrix[i][j]);
+            }
+        }
+    } else {
+        // Заполнение матрицы случайными числами в диапазоне [-50, 50]
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                matrix[i][j] = randomInRange(-50, 50);
+            }
+        }
+    }
+    
+    // Вывод исходной матрицы
+    printMatrix(matrix, n, "Исходная матрица");
+    
+    // Модификация матрицы: в чётных столбцах (0, 2, 4, ...) 
+    // заменяем числа из диапазона [-10, 10]
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            // Проверяем, является ли столбец чётным (индексы 0, 2, 4, ...)
+            if (j % 2 == 0) {
+                // Если число в запрещённом диапазоне, заменяем его
+                if (isInForbiddenRange(matrix[i][j])) {
+                    matrix[i][j] = generateOutsideForbiddenRange();
+                }
+            }
+        }
+    }
+    
+    printMatrix(matrix, n, "Модифицированная матрица (в чётных столбцах нет чисел из [-10, 10])");
+    
+    return 0;
+}
