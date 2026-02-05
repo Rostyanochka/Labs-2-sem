@@ -1,0 +1,140 @@
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+const MaxSize = 100
+
+// randomInRange возвращает случайное число в диапазоне [min, max]
+func randomInRange(min, max int) int {
+	return min + rand.Intn(max-min+1)
+}
+
+// printMatrix выводит матрицу с заголовком
+func printMatrix(matrix [][]int, m, n int, title string) {
+	fmt.Printf("%s:\n", title)
+	for i := 0; i < m; i++ {
+		for j := 0; j < n; j++ {
+			fmt.Printf("%6d ", matrix[i][j])
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+}
+
+// sortFirstHalfColumn сортирует первую половину столбца по возрастанию (Пузырьком)
+func sortFirstHalfColumn(matrix [][]int, m, col int) {
+	half := m / 2
+	// Пузырьковая сортировка
+	for i := 0; i < half-1; i++ {
+		for j := 0; j < half-i-1; j++ {
+			if matrix[j][col] > matrix[j+1][col] {
+				// Множественное присваивание для обмена значений (swap)
+				matrix[j][col], matrix[j+1][col] = matrix[j+1][col], matrix[j][col]
+			}
+		}
+	}
+}
+
+// squareColumn возводит в квадрат все элементы столбца
+func squareColumn(matrix [][]int, m, col int) {
+	for i := 0; i < m; i++ {
+		matrix[i][col] = matrix[i][col] * matrix[i][col]
+	}
+}
+
+// zeroColumn заменяет все элементы столбца на ноль
+func zeroColumn(matrix [][]int, m, col int) {
+	for i := 0; i < m; i++ {
+		matrix[i][col] = 0
+	}
+}
+
+// countPosNeg подсчитывает положительные и отрицательные числа в столбце
+// В Go мы возвращаем два значения вместо использования указателей
+func countPosNeg(matrix [][]int, m, col int) (int, int) {
+	pos := 0
+	neg := 0
+	for i := 0; i < m; i++ {
+		if matrix[i][col] > 0 {
+			pos++
+		} else if matrix[i][col] < 0 {
+			neg++
+		}
+	}
+	return pos, neg
+}
+
+func main() {
+	// Инициализация генератора случайных чисел
+	rand.Seed(time.Now().UnixNano())
+
+	var m, n int
+
+	// Ввод размеров матрицы
+	fmt.Print("Введите количество строк M: ")
+	fmt.Scan(&m)
+	fmt.Print("Введите количество столбцов N: ")
+	fmt.Scan(&n)
+
+	if m <= 0 || m > MaxSize || n <= 0 || n > MaxSize {
+		fmt.Printf("Ошибка: размеры должны быть от 1 до %d\n", MaxSize)
+		return
+	}
+
+	// Создание динамической матрицы (слайса слайсов)
+	matrix := make([][]int, m)
+	for i := range matrix {
+		matrix[i] = make([]int, n)
+	}
+
+	// Выбор способа заполнения
+	var choice int
+	fmt.Println("Выберите способ заполнения матрицы:")
+	fmt.Println("1 - Случайные числа")
+	fmt.Println("2 - Ввод вручную")
+	fmt.Print("Ваш выбор: ")
+	fmt.Scan(&choice)
+
+	if choice == 2 {
+		fmt.Printf("Введите элементы матрицы (%d x %d):\n", m, n)
+		for i := 0; i < m; i++ {
+			for j := 0; j < n; j++ {
+				fmt.Printf("matrix[%d][%d] = ", i, j)
+				fmt.Scan(&matrix[i][j])
+			}
+		}
+	} else {
+		for i := 0; i < m; i++ {
+			for j := 0; j < n; j++ {
+				matrix[i][j] = randomInRange(-100, 100)
+			}
+		}
+	}
+
+	printMatrix(matrix, m, n, "Исходная матрица")
+
+	// Обработка каждого столбца
+	for j := 0; j < n; j++ {
+		pos, neg := countPosNeg(matrix, m, j)
+
+		fmt.Printf("Столбец %d: положительных = %d, отрицательных = %d -> ", j, pos, neg)
+
+		if pos > neg {
+			fmt.Println("сортировка первой половины")
+			sortFirstHalfColumn(matrix, m, j)
+		} else if pos < neg {
+			fmt.Println("возведение в квадрат")
+			squareColumn(matrix, m, j)
+		} else {
+			fmt.Println("замена на нули")
+			zeroColumn(matrix, m, j)
+		}
+	}
+	fmt.Println()
+
+	printMatrix(matrix, m, n, "Модифицированная матрица")
+}
