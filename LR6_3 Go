@@ -1,0 +1,256 @@
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+const (
+	M = 0.93
+	N = 0.07
+	P = -0.84
+)
+
+var OriginalMatr = [4][5]float64{
+	{M, -0.04, 0.21, -18.0, -1.24},
+	{0.25, -1.23, N, -0.09, P},
+	{-0.21, N, 0.8, -0.13, 2.56},
+	{0.15, -1.31, 0.06, P, M},
+}
+
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ 
+
+// Вывод матрицы 4x5 на экран
+func printMat(A [4][5]float64) {
+	for i := 0; i < 4; i++ {
+		fmt.Print("  ")
+		for j := 0; j < 5; j++ {
+			fmt.Printf("%8.3f ", A[i][j])
+		}
+		fmt.Println()
+	}
+}
+
+// Копирование матрицы (в Go массивы копируются по значению)
+func copyM(src [4][5]float64) [4][5]float64 {
+	return src
+}
+
+// Проверка, что все элементы вектора конечные (не inf и не nan)
+func isFiniteVec(v []float64) bool {
+	for _, x := range v {
+		if math.IsInf(x, 0) || math.IsNaN(x) {
+			return false
+		}
+	}
+	return true
+}
+
+//МЕТОД ГАУССА 
+
+
+// Перестановка двух строк матрицы
+func swapRows(A *[4][5]float64, r1, r2 int) {
+	A[r1], A[r2] = A[r2], A[r1]
+}
+
+// Поиск строки с максимальным элементом в столбце (выбор главного элемента)
+func pivotRow(A *[4][5]float64, col int) int {
+	idx := col
+	best := math.Abs(A[col][col])
+	for r := col + 1; r < 4; r++ {
+		if math.Abs(A[r][col]) > best {
+			best = math.Abs(A[r][col])
+			idx = r
+		}
+	}
+	return idx
+}
+
+// Исключение элементов под диагональю
+func eliminateBelow(A *[4][5]float64, piv int) {
+	for r := piv + 1; r < 4; r++ {
+		factor := A[r][piv] / A[piv][piv]
+		for c := piv; c < 5; c++ {
+			A[r][c] -= factor * A[piv][c]
+		}
+	}
+}
+
+// Решение системы методом Гаусса
+func gaussSolve(Ain [4][5]float64) []float64 {
+	A := Ain
+
+	fmt.Println("Исходная матрица")
+	printMat(A)
+
+	// Прямой ход
+	for col := 0; col < 4; col++ {
+		piv := pivotRow(&A, col)
+		if math.Abs(A[piv][col]) < 1e-12 {
+			panic("Вырожденная матрица")
+		}
+		if piv != col {
+			swapRows(&A, piv, col)
+		}
+		eliminateBelow(&A, col)
+	}
+
+	fmt.Println("\nВерхнетреугольная матрица")
+	printMat(A)
+	fmt.Println()
+
+	// Обратный ход
+	x := make([]float64, 4)
+	for i := 3; i >= 0; i-- {
+		s := A[i][4]
+		for j := i + 1; j < 4; j++ {
+			s -= A[i][j] * x[j]
+		}
+		x[i] = s / A[i][i]
+	}
+	return x
+}
+
+
+// ПЕРЕСТАНОВКА СТРОК ДЛЯ СХОДИМОСТИ #
+
+
+// Оценка диагонального преобладания
+func dominanceScore(A [4][5]float64, perm []int) float64 {
+	score := 0.0
+	for i := 0; i < 4; i++ {
+		r := perm[i]
+		diag := math.Abs(A[r][i])
+		sumOff := 0.0
+		for j := 0; j < 4; j++ {
+			if j != i {
+				sumOff += math.Abs(A[r][j])
+			}
+		}
+		score += diag - sumOff
+	}
+	return score
+}
+
+// Перебор всех перестановок строк
+func buildBestPerm(A [4][5]float64) []int {
+	perm := []int{0, 1, 2, 3}
+	best := make([]int, 4)
+	bestScore := math.Inf(-1)
+
+	var gen func([]int, int)
+	gen = func(a []int, k int) {
+		if k == len(a) {
+			score := dominanceScore(A, a)
+			if score > bestScore {
+				bestScore = score
+				copy(best, a)
+			}
+			return
+		}
+		for i := k; i < len(a); i++ {
+			a[k], a[i] = a[i], a[k]
+			gen(a, k+1)
+			a[k], a[i] = a[i], a[k]
+		}
+	}
+	gen(perm, 0)
+	return best
+}
+
+// Применение перестановки строк
+func applyPerm(A *[4][5]float64, perm []int) {
+	var B [4][5]float64
+	for i := 0; i < 4; i++ {
+		B[i] = A[perm[i]]
+	}
+	*A = B
+}
+
+//ИТЕРАЦИОННЫЙ МЕТОД (ЗЕЙДЕЛЬ + РЕЛАКСАЦИЯ) 
+
+
+func sor(A [4][5]float64, x []float64, eps float64, omega float64, print bool) bool {
+	xOld := make([]float64, 4)
+
+	for k := 0; k < 5000; k++ {
+		copy(xOld, x)
+
+		for i := 0; i < 4; i++ {
+			s := A[i][4]
+			for j := 0; j < 4; j++ {
+				if j != i {
+					if j < i {
+						s -= A[i][j] * x[j]
+					} else {
+						s -= A[i][j] * xOld[j]
+					}
+				}
+			}
+			gs := s / A[i][i]
+			x[i] = (1-omega)*xOld[i] + omega*gs
+		}
+
+		if !isFiniteVec(x) {
+			return false
+		}
+
+		stop := true
+		if print {
+			fmt.Printf("%d\t", k)
+		}
+
+		for i := 0; i < 4; i++ {
+			epsv := math.Abs(x[i] - xOld[i])
+			if print {
+				fmt.Printf("| x%d = %.3f (eps=%.3f) ", i+1, x[i], epsv)
+			}
+			if epsv > eps {
+				stop = false
+			}
+		}
+		if print {
+			fmt.Println()
+		}
+
+		if stop {
+			return true
+		}
+	}
+	return false
+}
+
+
+func main() {
+	fmt.Println("Прямой метод")
+	xg := gaussSolve(OriginalMatr)
+
+	fmt.Println("Ответ:")
+	for i := 0; i < 4; i++ {
+		fmt.Printf("x%d = %.3f\n", i+1, xg[i])
+	}
+
+	fmt.Println("\nИтерационный метод")
+	A := copyM(OriginalMatr)
+
+	fmt.Println("Исходная матрица")
+	printMat(A)
+
+	perm := buildBestPerm(A)
+	applyPerm(&A, perm)
+
+	fmt.Println("\nПосле перестановки строк")
+	printMat(A)
+
+	x := []float64{1, 1, 1, 1}
+	omega := 1.0
+
+	fmt.Println("\nПоиск решения:")
+	sor(A, x, 0.001, omega, true)
+
+	fmt.Println("\nОтвет:")
+	for i := 0; i < 4; i++ {
+		fmt.Printf("x%d = %.3f\n", i+1, x[i])
+	}
+}
