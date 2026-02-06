@@ -1,0 +1,390 @@
+#include <iostream>
+#include <iomanip>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <limits>
+#include <array>
+
+using namespace std;
+
+static const double M = 0.93;  
+static const double N = 0.07;   
+static const double P = -0.84;
+
+static const double OriginalMatr[4][5] = {
+    { M,   -0.04,  0.21, -18.0, -1.24},  
+    {0.25, -1.23,     N, -0.09,    P},   
+    {-0.21,    N,   0.8, -0.13,  2.56},  
+    {0.15, -1.31,  0.06,    P,     M}    
+};
+
+// Вывод матрицы на экран
+// A - матрица 4x5, prec - точность вывода, w - ширина поля
+static void printMat(const double A[4][5], int prec = 3, int w = 8) {
+    cout.setf(std::ios::fixed);
+    cout << setprecision(prec) << setfill(' ');
+    for (int i = 0; i < 4; i++) {
+        cout << "  ";
+        for (int j = 0; j < 5; j++) {
+            cout << setw(w) << A[i][j] << (j == 4 ? "" : " ");
+        }
+        cout << "\n";
+    }
+}
+
+// Копирование матрицы src в dst
+static void copyM(double dst[4][5], const double src[4][5]) {
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 5; j++)
+            dst[i][j] = src[i][j];
+}
+
+// Проверка, что все элементы вектора конечны (не inf/nan)
+static bool isFiniteVec(const vector<double>& v) {
+    for (double x : v) 
+        if (!std::isfinite(x)) return false;
+    return true;
+}
+
+// Максимальная абсолютная разность между двумя векторами
+static double maxAbsDiff(const vector<double>& a, const vector<double>& b) {
+    double mx = 0.0;
+    for (int i = 0; i < (int)a.size(); i++) 
+        mx = max(mx, fabs(a[i] - b[i]));
+    return mx;
+}
+
+// Метод Гаусса с выбором главного элемента
+// Перестановка двух строк матрицы
+static void swapRows(double A[4][5], int r1, int r2) {
+    for (int j = 0; j < 5; j++) 
+        swap(A[r1][j], A[r2][j]);
+}
+
+// Поиск строки с максимальным элементом в столбце col (выбор главного элемента)
+// Возвращает индекс строки с максимальным по модулю элементом
+static int pivotRow(double A[4][5], int col) {
+    int idx = col;
+    double best = fabs(A[col][col]);
+    
+    // Ищем максимальный элемент в столбце ниже диагонали
+    for (int r = col + 1; r < 4; r++) {
+        if (fabs(A[r][col]) > best) {
+            best = fabs(A[r][col]);
+            idx = r;
+        }
+    }
+    return idx;
+}
+
+// Прямой ход: исключение элементов под главной диагональю
+// piv - номер текущей ведущей строки
+static void eliminateBelow(double A[4][5], int piv) {
+    for (int r = piv + 1; r < 4; r++) {
+        // Вычисляем множитель для исключения
+        double factor = A[r][piv] / A[piv][piv];
+        // Вычитаем ведущую строку, умноженную на множитель
+        for (int c = piv; c < 5; c++) 
+            A[r][c] -= factor * A[piv][c];
+    }
+}
+
+// A_in - расширенная матрица системы
+// printProcess - флаг вывода промежуточных результатов
+// Возвращает вектор решения
+static vector<double> gaussSolve(double A_in[4][5], bool printProcess = true) {
+    double A[4][5];
+    copyM(A, A_in);  // Работаем с копией, чтобы не менять исходную матрицу
+
+    if (printProcess) {
+        cout << "Исходная матрица\n";
+        printMat(A);
+    }
+
+    // ПРЯМОЙ ХОД 
+    for (int col = 0; col < 4; col++) {
+        // Выбор главного элемента (поиск максимума в столбце)
+        int piv = pivotRow(A, col);
+        
+        // Проверка на вырожденность матрицы
+        if (fabs(A[piv][col]) < 1e-12) {
+            throw runtime_error("Нулевой ведущий элемент (возможна вырожденность).");
+        }
+        
+        // Перестановка строк, если нашли больший элемент
+        if (piv != col) 
+            swapRows(A, piv, col);
+        
+        // Исключение элементов под главной диагональю
+        eliminateBelow(A, col);
+    }
+
+    if (printProcess) {
+        cout << "\nВерхнетреугольная матрица\n";
+        printMat(A);
+        cout << "\n";
+    }
+
+    // ОБРАТНЫЙ ХОД 
+    vector<double> x(4, 0.0);
+    
+    // Находим неизвестные, начиная с последней
+    for (int i = 3; i >= 0; i--) {
+        double s = A[i][4];  // Правая часть уравнения
+        
+        // Вычитаем известные члены
+        for (int j = i + 1; j < 4; j++) 
+            s -= A[i][j] * x[j];
+        
+        // Делим на диагональный элемент
+        x[i] = s / A[i][i];
+    }
+    
+    return x;
+}
+
+// Подбор перестановки строк для диагонального преобладания 
+
+// Вычисление "оценки" перестановки для диагонального преобладания
+// Чем больше значение, тем лучше диагональное преобладание
+static double dominanceScore(const double A[4][5], const array<int,4>& perm) {
+    double score = 0.0;
+    
+    for (int i = 0; i < 4; i++) {
+        int r = perm[i];
+        double diag = fabs(A[r][i]);      // Диагональный элемент
+        double sumOff = 0.0;               // Сумма внедиагональных элементов
+        
+        for (int j = 0; j < 4; j++) 
+            if (j != i) sumOff += fabs(A[r][j]);
+        
+        // Разность: чем больше диагональ превышает остальные, тем лучше
+        score += (diag - sumOff);
+    }
+    return score;
+}
+
+// Поиск лучшей перестановки строк для обеспечения сходимости
+// Перебирает все 24 возможные перестановки 4 строк
+static bool buildRowPermutationForDominance(const double A[4][5], array<int,4>& bestPerm) {
+    array<int,4> perm = {0,1,2,3};
+    double bestScore = -1e300;
+    bool found = false;
+
+    // Сортируем для корректной работы next_permutation
+    sort(perm.begin(), perm.end());
+    
+    do {
+        // Проверяем, что диагональные элементы не нулевые
+        bool ok = true;
+        for (int i = 0; i < 4; i++) {
+            if (fabs(A[perm[i]][i]) < 1e-12) { 
+                ok = false; 
+                break; 
+            }
+        }
+        if (!ok) continue;
+
+        // Вычисляем оценку перестановки
+        double sc = dominanceScore(A, perm);
+        if (sc > bestScore) {
+            bestScore = sc;
+            bestPerm = perm;
+            found = true;
+        }
+    } while (next_permutation(perm.begin(), perm.end()));
+
+    return found;
+}
+
+// Применение перестановки строк к матрице
+static void applyRowPermutation(double A[4][5], const array<int,4>& perm) {
+    double B[4][5];
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 5; j++)
+            B[i][j] = A[perm[i]][j];
+    copyM(A, B);
+}
+
+//  Печать канонической формы 
+
+// Преобразование к каноническому виду x = Bx + c и вывод матрицы C = [B|c]
+static void printCanonicalC(const double A[4][5]) {
+    double C[4][5]{};
+    
+    for (int i = 0; i < 4; i++) {
+        double aii = A[i][i];  // Диагональный элемент
+        
+        for (int j = 0; j < 4; j++) {
+            if (i == j) 
+                C[i][j] = 0.0;           // На диагонали нули
+            else        
+                C[i][j] = -A[i][j] / aii; // B_ij = -a_ij / a_ii
+        }
+        C[i][4] = A[i][4] / aii;          // c_i = b_i / a_ii
+    }
+
+    cout << "\nРасширенная матрица C (Коэффициенты уравнения канонического вида)\n";
+    printMat(C);
+}
+
+// A - матрица системы
+// x - начальное приближение (модифицируется)
+// epsStop - требуемая точность
+// omega - параметр релаксации (1.0 = метод Зейделя)
+// printTable - флаг вывода таблицы
+static bool sorSolveAndPrint(const double A[4][5],
+                            vector<double>& x,
+                            double epsStop,
+                            double omega,
+                            int maxIter,
+                            bool printTable)
+{
+    vector<double> x_old = x;
+
+    for (int k = 0; k <= maxIter; k++) {
+        x_old = x;  // Сохраняем предыдущее приближение
+
+        // Вычисление нового приближения
+        for (int i = 0; i < 4; i++) {
+            double s = A[i][4];  // Правая часть
+            
+            for (int j = 0; j < 4; j++) {
+                if (j == i) continue;
+                // j < i - уже обновлённые значения (Зейдель)
+                // j > i - старые значения
+                s -= A[i][j] * (j < i ? x[j] : x_old[j]);
+            }
+            
+            double gs = s / A[i][i];                      // Шаг Зейделя
+            x[i] = (1.0 - omega) * x_old[i] + omega * gs; // Релаксация
+        }
+
+        // Проверка на расходимость (inf/nan)
+        if (!isFiniteVec(x)) return false;
+
+        // Вычисление погрешности для каждой переменной
+        vector<double> epsi(4);
+        bool stop = true;
+        
+        for (int i = 0; i < 4; i++) {
+            epsi[i] = fabs(x[i] - x_old[i]);
+            if (epsi[i] > epsStop) stop = false;
+        }
+
+        // Вывод текущей итерации
+        if (printTable) {
+            cout.setf(std::ios::fixed);
+            cout << setprecision(3);
+            cout << k << "\t";
+            for (int i = 0; i < 4; i++) {
+                cout << " | x" << (i + 1) << " = " << x[i]
+                     << " (eps = " << epsi[i] << ")";
+            }
+            cout << "\n";
+        }
+
+        // Проверка достижения точности
+        if (stop) return true;
+    }
+    
+    return false;  // Не сошлось за maxIter итераций
+}
+
+int main() {
+    //ПРЯМОЙ МЕТОД (ГАУСС)
+    cout << "Прямой метод\n";
+    
+    double A_gauss[4][5];
+    copyM(A_gauss, OriginalMatr);
+
+    vector<double> x_gauss;
+    try {
+        x_gauss = gaussSolve(A_gauss, true);
+    } catch (const exception& e) {
+        cout << "Ошибка Гаусса: " << e.what() << "\n";
+        return 0;
+    }
+
+    cout << "Ответ:\n";
+    cout.setf(std::ios::fixed);
+    cout << setprecision(3);
+    cout << "x1 = " << x_gauss[0] << "\n";
+    cout << "x2 = " << x_gauss[1] << "\n";
+    cout << "x3 = " << x_gauss[2] << "\n";
+    cout << "x4 = " << x_gauss[3] << "\n";
+    cout << "--------------------------\n";
+
+    cout << "Итерационный метод\n";
+
+    double A_it[4][5];
+    copyM(A_it, OriginalMatr);
+
+    cout << "Исходная матрица\n";
+    printMat(A_it);
+
+    // 1) Подбор перестановки строк для улучшения сходимости
+    array<int,4> bestPerm{};
+    bool permFound = buildRowPermutationForDominance(A_it, bestPerm);
+    
+    if (permFound) {
+        applyRowPermutation(A_it, bestPerm);
+        cout << "\nМатрица после перестановки строк (для улучшения сходимости)\n";
+        printMat(A_it);
+    }
+
+    // 2) Вывод канонической формы x = Bx + c
+    printCanonicalC(A_it);
+
+    cout << "\nПоиск решения:\n";
+
+    const double epsStop = 0.001;  // Требуемая точность (10^-3)
+    const int maxIter = 5000;      // Максимум итераций
+
+    // 3) Автоподбор параметра релаксации ω
+    vector<double> x0 = {1, 1, 1, 1};  // Начальное приближение
+    bool ok = false;
+    double omega = 1.0;  // Начинаем с метода Зейделя (ω = 1)
+
+    // Если не сходится - уменьшаем ω
+    for (int attempt = 0; attempt < 8; attempt++) {
+        vector<double> x = x0;
+        
+        // Пробный запуск без вывода
+        bool converged = sorSolveAndPrint(A_it, x, epsStop, omega, maxIter, false);
+
+        if (converged && isFiniteVec(x)) {
+            // Успешно сошлось - печатаем таблицу с найденным ω
+            ok = true;
+            x0 = x;
+
+            cout << "\n(используется ω = " << fixed << setprecision(2) << omega << ")\n";
+            
+            // Повторный запуск с выводом таблицы
+            vector<double> xprint = {1,1,1,1};
+            (void)sorSolveAndPrint(A_it, xprint, epsStop, omega, maxIter, true);
+
+            // Вывод итогового ответа
+            cout << "\nОтвет:\n";
+            cout << fixed << setprecision(3);
+            cout << "x1 = " << xprint[0] << "\n";
+            cout << "x2 = " << xprint[1] << "\n";
+            cout << "x3 = " << xprint[2] << "\n";
+            cout << "x4 = " << xprint[3] << "\n";
+            break;
+        }
+
+        // Не сошлось - уменьшаем ω для "успокаивающей" релаксации
+        omega *= 0.75;  // 1.00 -> 0.75 -> 0.56 -> 0.42 ...
+        if (omega < 0.10) omega = 0.10;
+    }
+
+    if (!ok) {
+        cout << "\nИтерационный метод не сошёлся при автоподборе ω.\n";
+        cout << "Возможная причина: очень плохая сходимость для данной системы.\n";
+        cout << "Решение по Гауссу выше — корректное.\n";
+    }
+
+    return 0;
+}
