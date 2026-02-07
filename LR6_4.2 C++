@@ -1,0 +1,31 @@
+#include <iostream>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    long long n, m, t;
+    cout << "Введите n, m, t: " << endl;
+    if (cin >> n >> m >> t) {
+        long long l = 0, r = min(n, m) / 2;
+        long long ans = 0;
+
+        while (l <= r) {
+            long long k = l + (r - l) / 2;
+            // Количество плиток = полная площадь - внутренняя площадь
+            // S_path = n*m - (n - 2k)(m - 2k)
+            // Упрощенная формула: 2*k*(n + m - 2*k)
+            long long tilesNeeded = 2 * k * (n + m - 2 * k);
+
+            if (tilesNeeded <= t) {
+                ans = k;
+                l = k + 1;
+            } else {
+                r = k - 1;
+            }
+        }
+
+        cout << ans << endl;
+    }
+    return 0;
+}
