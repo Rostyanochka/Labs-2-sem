@@ -1,0 +1,74 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+var (
+	N, K    int
+	ciphers []string
+)
+
+// Рекурсивно генерирую все возможные слова длины K
+// и одновременно формирую их шифры.
+// В мапу кладу: шифр -> список слов, которые ему соответствуют
+func generateWords(
+	pos int,                      // текущая позиция в слове
+	currentWord string,           // текущее слово
+	currentCipher string,         // текущий шифр
+	cipherToWords map[string][]string, // словарь шифр -> слова
+) {
+	// Если слово длины K уже сформировано
+	if pos == K {
+		// добавляю слово в список для данного шифра
+		cipherToWords[currentCipher] = append(
+			cipherToWords[currentCipher],
+			currentWord,
+		)
+		return
+	}
+
+	// Перебираю все возможные буквы алфавита
+	for i := 0; i < N; i++ {
+		// Добавляю букву и соответствующий ей шифр
+		generateWords(
+			pos+1,
+			currentWord+string(rune('a'+i)),
+			currentCipher+ciphers[i]+" ",
+			cipherToWords,
+		)
+	}
+}
+
+func main() {
+	// Использую буферизованный ввод, чтобы всё читалось быстрее
+	in := bufio.NewReader(os.Stdin)
+
+	// Считываю N — размер алфавита и K — длину слов
+	fmt.Fscan(in, &N, &K)
+
+	// Считываю шифры для каждой буквы
+	ciphers = make([]string, N)
+	for i := 0; i < N; i++ {
+		fmt.Fscan(in, &ciphers[i])
+	}
+
+	// Мапа: шифр -> список слов с таким шифром
+	cipherToWords := make(map[string][]string)
+
+	// Запускаю генерацию всех возможных слов
+	generateWords(0, "", "", cipherToWords)
+
+	// Считаю количество шифров,
+	// которым соответствует ровно одно слово
+	uniqueCount := 0
+	for _, words := range cipherToWords {
+		if len(words) == 1 {
+			uniqueCount++
+		}
+	}
+
+	fmt.Println(uniqueCount)
+}
