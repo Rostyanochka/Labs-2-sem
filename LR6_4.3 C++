@@ -1,0 +1,44 @@
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int K;
+    cin >> K;
+    vector<int> targets(K);
+    for (int i = 0; i < K; ++i) {
+        cin >> targets[i];
+    }
+    
+    int current_pos = 1;
+    int speed = 0;
+    int moves = 0;
+    int target_index = 0;
+    
+    while (target_index < K) {
+        int target = targets[target_index];
+        
+        if (current_pos >= target) {
+            target_index++;
+            continue;
+        }
+        
+        // Оптимальное изменение скорости:
+        // Нужно выбрать скорость так, чтобы достичь target за минимальное число ходов
+        // Рассчитываем минимальную скорость, при которой мы сможем достичь target
+        int remaining = target - current_pos;
+        
+        // Лучший вариант - увеличивать скорость, пока это выгодно
+        if (speed * (speed + 1) / 2 <= remaining) {
+            speed++;
+        } else if (speed > 0 && (speed - 1) * speed / 2 >= remaining) {
+            speed--;
+        }
+        
+        current_pos += speed;
+        moves++;
+    }
+    
+    cout << moves << endl;
+    return 0;
+}
