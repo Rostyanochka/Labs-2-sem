@@ -1,0 +1,68 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	// K — количество целей
+	var K int
+	in := bufio.NewReader(os.Stdin)
+
+	// Считываю количество целей
+	fmt.Fscan(in, &K)
+
+	// Массив с координатами целей
+	targets := make([]int, K)
+	for i := 0; i < K; i++ {
+		fmt.Fscan(in, &targets[i])
+	}
+
+	// Текущая позиция (по условию начинаем с 1)
+	currentPos := 1
+
+	// Текущая скорость
+	speed := 0
+
+	// Количество совершённых ходов
+	moves := 0
+
+	// Индекс текущей цели
+	targetIndex := 0
+
+	// Пока не достигли все цели
+	for targetIndex < K {
+		target := targets[targetIndex]
+
+		// Если текущая позиция уже не меньше цели,
+		// считаем цель достигнутой и переходим к следующей
+		if currentPos >= target {
+			targetIndex++
+			continue
+		}
+
+		// Сколько ещё нужно пройти до текущей цели
+		remaining := target - currentPos
+
+		// Оптимальное изменение скорости:
+		// Увеличиваем скорость, если можем позволить себе разгон
+		// (сумма шагов при дальнейшем торможении не превысит remaining)
+		if speed*(speed+1)/2 <= remaining {
+			speed++
+		} else if speed > 0 && (speed-1)*speed/2 >= remaining {
+			// Уменьшаем скорость, если разгоняться уже невыгодно
+			speed--
+		}
+
+		// Двигаемся на расстояние, равное текущей скорости
+		currentPos += speed
+
+		// Увеличиваем счётчик ходов
+		moves++
+	}
+
+	// Вывожу минимальное количество ходов
+	fmt.Println(moves)
+}
