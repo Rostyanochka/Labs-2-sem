@@ -1,0 +1,42 @@
+#include <iostream>
+#include <utility>
+#include <algorithm>
+
+using namespace std;
+
+// Функция для подсчета количества единиц в двоичном представлении числа
+int count_ones(unsigned long long num) {
+    int count = 0;
+    while (num > 0) {
+        count += num & 1;
+        num >>= 1;
+    }
+    return count;
+}
+
+int main() {
+    unsigned long long N;
+    cin >> N;
+    
+    pair<unsigned long long, unsigned long long> best_pair = {0, N};
+    int max_ones = count_ones(0) + count_ones(N);
+    
+    // Проверяем все возможные пары (a, b) где a + b = N
+    for (unsigned long long a = 1; a <= N / 2; ++a) {
+        unsigned long long b = N - a;
+        int current_ones = count_ones(a) + count_ones(b);
+        
+        if (current_ones > max_ones) {
+            max_ones = current_ones;
+            best_pair = {a, b};
+        } else if (current_ones == max_ones) {
+            // Если сумма единиц такая же, выбираем пару с большей разностью
+            if (b - a > best_pair.second - best_pair.first) {
+                best_pair = {a, b};
+            }
+        }
+    }
+    
+    cout << best_pair.first << " " << best_pair.second << endl;
+    return 0;
+}
