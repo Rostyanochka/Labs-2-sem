@@ -1,0 +1,56 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+// Функция подсчитывает количество единиц
+// в двоичном представлении числа
+func countOnes(num uint64) int {
+	count := 0
+	for num > 0 {
+		count += int(num & 1)
+		num >>= 1
+	}
+	return count
+}
+
+func main() {
+	in := bufio.NewReader(os.Stdin)
+
+	var N uint64
+	fmt.Fscan(in, &N)
+
+	// Лучшая найденная пара (a, b)
+	var bestA uint64 = 0
+	var bestB uint64 = N
+
+	// Максимальная сумма единиц в двоичном представлении
+	maxOnes := countOnes(0) + countOnes(N)
+
+	// Перебираем все пары (a, b), где a + b = N
+	for a := uint64(1); a <= N/2; a++ {
+		b := N - a
+
+		currentOnes := countOnes(a) + countOnes(b)
+
+		if currentOnes > maxOnes {
+			// Нашли лучшую по количеству единиц пару
+			maxOnes = currentOnes
+			bestA = a
+			bestB = b
+		} else if currentOnes == maxOnes {
+			// Если сумма единиц одинаковая,
+			// выбираем пару с большей разностью b - a
+			if b-a > bestB-bestA {
+				bestA = a
+				bestB = b
+			}
+		}
+	}
+
+	// Выводим найденную пару
+	fmt.Println(bestA, bestB)
+}
