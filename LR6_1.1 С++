@@ -1,16 +1,22 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include <iostream>
+#include <vector>
+#include <random>
+#include <ctime>
+#include <iomanip>
 
-#define MAX_SIZE 100  
+using namespace std;
+
+const int MAX_SIZE = 100;
 
 // генерация случайного числа в диапазоне [min, max]
 int randomInRange(int min, int max) {
-    return min + rand() % (max - min + 1);
+    static mt19937 gen(time(nullptr));
+    uniform_int_distribution<> dis(min, max);
+    return dis(gen);
 }
 
 // находится ли число в диапазоне [-10, 10]
-int isInForbiddenRange(int num) {
+bool isInForbiddenRange(int num) {
     return (num >= -10 && num <= 10);
 }
 
@@ -23,53 +29,51 @@ int generateOutsideForbiddenRange() {
 }
 
 // Функция для вывода матрицы
-void printMatrix(int matrix[MAX_SIZE][MAX_SIZE], int n, const char *title) {
-    printf("%s:\n", title);
+void printMatrix(const vector<vector<int>>& matrix, int n, const string& title) {
+    cout << title << ":" << endl;
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
-            printf("%4d ", matrix[i][j]);
+            cout << setw(4) << matrix[i][j] << " ";
         }
-        printf("\n");
+        cout << endl;
     }
-    printf("\n");
+    cout << endl;
 }
 
 int main() {
-    int matrix[MAX_SIZE][MAX_SIZE];
     int n;
     
-    // Инициализация генератора случайных чисел
-    srand(time(NULL));
-    
     // Ввод размера матрицы
-    printf("Введите размер матрицы N (чётное число): ");
-    scanf("%d", &n);
+    cout << "Введите размер матрицы N (чётное число): ";
+    if (!(cin >> n)) return 1;
     
     // Проверка на чётность и допустимый размер
     if (n <= 0 || n > MAX_SIZE) {
-        printf("Ошибка: N должно быть положительным числом не больше %d\n", MAX_SIZE);
+        cout << "Ошибка: N должно быть положительным числом не больше " << MAX_SIZE << endl;
         return 1;
     }
     if (n % 2 != 0) {
-        printf("Ошибка: N должно быть чётным числом\n");
+        cout << "Ошибка: N должно быть чётным числом" << endl;
         return 1;
     }
     
+    vector<vector<int>> matrix(n, vector<int>(n));
+    
     // Выбор способа заполнения матрицы
     int choice;
-    printf("Выберите способ заполнения матрицы:\n");
-    printf("1 - Случайные числа\n");
-    printf("2 - Ввод вручную\n");
-    printf("Ваш выбор: ");
-    scanf("%d", &choice);
+    cout << "Выберите способ заполнения матрицы:" << endl;
+    cout << "1 - Случайные числа" << endl;
+    cout << "2 - Ввод вручную" << endl;
+    cout << "Ваш выбор: ";
+    cin >> choice;
     
     if (choice == 2) {
         // Ручной ввод матрицы
-        printf("Введите элементы матрицы (%d x %d):\n", n, n);
+        cout << "Введите элементы матрицы (" << n << " x " << n << "):" << endl;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                printf("matrix[%d][%d] = ", i, j);
-                scanf("%d", &matrix[i][j]);
+                cout << "matrix[" << i << "][" << j << "] = ";
+                cin >> matrix[i][j];
             }
         }
     } else {
