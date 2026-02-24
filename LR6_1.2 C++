@@ -1,99 +1,103 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include <iostream>
+#include <vector>
+#include <random>
+#include <ctime>
+#include <iomanip>
+#include <algorithm>
 
-#define MAX_SIZE 100
+using namespace std;
+
+const int MAX_SIZE = 100;
 
 // генерация случайного числа в диапазоне [min, max]
 int randomInRange(int min, int max) {
-    return min + rand() % (max - min + 1);
+    static mt19937 gen(time(nullptr));
+    uniform_int_distribution<> dis(min, max);
+    return dis(gen);
 }
 
 // вывод матрицы
-void printMatrix(int matrix[MAX_SIZE][MAX_SIZE], int m, int n, const char *title) {
-    printf("%s:\n", title);
+void printMatrix(const vector<vector<int>>& matrix, int m, int n, const string& title) {
+    cout << title << ":" << endl;
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
-            printf("%6d ", matrix[i][j]);
+            cout << setw(6) << matrix[i][j] << " ";
         }
-        printf("\n");
+        cout << endl;
     }
-    printf("\n");
+    cout << endl;
 }
 
 // сортировка первой половины столбца по возрастанию
-void sortFirstHalfColumn(int matrix[MAX_SIZE][MAX_SIZE], int m, int col) {
+void sortFirstHalfColumn(vector<vector<int>>& matrix, int m, int col) {
     int half = m / 2;
-    // пузырьковая сортировка
-    for (int i = 0; i < half - 1; i++) {
-        for (int j = 0; j < half - i - 1; j++) {
-            if (matrix[j][col] > matrix[j + 1][col]) {
-                int temp = matrix[j][col];
-                matrix[j][col] = matrix[j + 1][col];
-                matrix[j + 1][col] = temp;
-            }
-        }
+    vector<int> tempVector;
+    for (int i = 0; i < half; ++i) {
+        tempVector.push_back(matrix[i][col]);
+    }
+    sort(tempVector.begin(), tempVector.end());
+    for (int i = 0; i < half; ++i) {
+        matrix[i][col] = tempVector[i];
     }
 }
 
 // возведение в квадрат всех элементов столбца
-void squareColumn(int matrix[MAX_SIZE][MAX_SIZE], int m, int col) {
+void squareColumn(vector<vector<int>>& matrix, int m, int col) {
     for (int i = 0; i < m; i++) {
         matrix[i][col] = matrix[i][col] * matrix[i][col];
     }
 }
 
 // замена всех элементов столбца на ноль
-void zeroColumn(int matrix[MAX_SIZE][MAX_SIZE], int m, int col) {
+void zeroColumn(vector<vector<int>>& matrix, int m, int col) {
     for (int i = 0; i < m; i++) {
         matrix[i][col] = 0;
     }
 }
 
 // подсчёт положительных и отрицательных чисел в столбце
-void countPosNeg(int matrix[MAX_SIZE][MAX_SIZE], int m, int col, int *pos, int *neg) {
-    *pos = 0;
-    *neg = 0;
+void countPosNeg(const vector<vector<int>>& matrix, int m, int col, int &pos, int &neg) {
+    pos = 0;
+    neg = 0;
     for (int i = 0; i < m; i++) {
         if (matrix[i][col] > 0) {
-            (*pos)++;
+            pos++;
         } else if (matrix[i][col] < 0) {
-            (*neg)++;
+            neg++;
         }
     }
 }
 
 int main() {
-    int matrix[MAX_SIZE][MAX_SIZE];
     int m, n;
     
-    srand(time(NULL));
-    
     // ввод размеров матрицы
-    printf("Введите количество строк M: ");
-    scanf("%d", &m);
-    printf("Введите количество столбцов N: ");
-    scanf("%d", &n);
+    cout << "Введите количество строк M: ";
+    cin >> m;
+    cout << "Введите количество столбцов N: ";
+    cin >> n;
     
     if (m <= 0 || m > MAX_SIZE || n <= 0 || n > MAX_SIZE) {
-        printf("Ошибка: размеры должны быть от 1 до %d\n", MAX_SIZE);
+        cout << "Ошибка: размеры должны быть от 1 до " << MAX_SIZE << endl;
         return 1;
     }
     
+    vector<vector<int>> matrix(m, vector<int>(n));
+    
     // выбор способа заполнения
     int choice;
-    printf("Выберите способ заполнения матрицы:\n");
-    printf("1 - Случайные числа\n");
-    printf("2 - Ввод вручную\n");
-    printf("Ваш выбор: ");
-    scanf("%d", &choice);
+    cout << "Выберите способ заполнения матрицы:" << endl;
+    cout << "1 - Случайные числа" << endl;
+    cout << "2 - Ввод вручную" << endl;
+    cout << "Ваш выбор: ";
+    cin >> choice;
     
     if (choice == 2) {
-        printf("Введите элементы матрицы (%d x %d):\n", m, n);
+        cout << "Введите элементы матрицы (" << m << " x " << n << "):" << endl;
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
-                printf("matrix[%d][%d] = ", i, j);
-                scanf("%d", &matrix[i][j]);
+                cout << "matrix[" << i << "][" << j << "] = ";
+                cin >> matrix[i][j];
             }
         }
     } else {
@@ -109,22 +113,22 @@ int main() {
     // обработка каждого столбца
     for (int j = 0; j < n; j++) {
         int pos, neg;
-        countPosNeg(matrix, m, j, &pos, &neg);
+        countPosNeg(matrix, m, j, pos, neg);
         
-        printf("Столбец %d: положительных = %d, отрицательных = %d -> ", j, pos, neg);
+        cout << "Столбец " << j << ": положительных = " << pos << ", отрицательных = " << neg << " -> ";
         
         if (pos > neg) {
-            printf("сортировка первой половины\n");
+            cout << "сортировка первой половины" << endl;
             sortFirstHalfColumn(matrix, m, j);
         } else if (pos < neg) {
-            printf("возведение в квадрат\n");
+            cout << "возведение в квадрат" << endl;
             squareColumn(matrix, m, j);
         } else {
-            printf("замена на нули\n");
+            cout << "замена на нули" << endl;
             zeroColumn(matrix, m, j);
         }
     }
-    printf("\n");
+    cout << endl;
     
     printMatrix(matrix, m, n, "Модифицированная матрица");
     
